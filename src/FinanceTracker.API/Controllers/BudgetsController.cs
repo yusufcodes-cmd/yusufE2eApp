@@ -1,10 +1,13 @@
+using System.Security.Claims;
 using FinanceTracker.API.DTOs;
 using FinanceTracker.Core.Entities;
 using FinanceTracker.Core.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FinanceTracker.API.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class BudgetsController : ControllerBase
@@ -16,11 +19,13 @@ public class BudgetsController : ControllerBase
         _budgetRepository = budgetRepository;
     }
 
+    private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<BudgetDto>>> GetByMonth(
         [FromQuery] int month, [FromQuery] int year)
     {
-        var budgets = await _budgetRepository.GetByMonthAsync(month, year);
+        var budgets = await _budgetRepository.GetByMonthAsync(GetUserId(), month, year);
 
         var result = budgets.Select(b => new BudgetDto(
             b.Id, b.Amount, b.Month, b.Year, b.CategoryId, b.Category?.Name ?? ""
@@ -32,8 +37,10 @@ public class BudgetsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<BudgetDto>> Create(CreateBudgetDto dto)
     {
+        var userId = GetUserId();
+
         var existing = await _budgetRepository.GetByCategoryAndMonthAsync(
-            dto.CategoryId, dto.Month, dto.Year);
+            userId, dto.CategoryId, dto.Month, dto.Year);
 
         if (existing is not null)
             return Conflict("A budget already exists for this category and month.");
@@ -43,7 +50,8 @@ public class BudgetsController : ControllerBase
             Amount = dto.Amount,
             Month = dto.Month,
             Year = dto.Year,
-            CategoryId = dto.CategoryId
+            CategoryId = dto.CategoryId,
+            UserId = userId
         };
 
         await _budgetRepository.AddAsync(budget);
@@ -60,7 +68,7 @@ public class BudgetsController : ControllerBase
     {
         var budget = await _budgetRepository.GetByIdAsync(id);
 
-        if (budget is null)
+        if (budget is null || budget.UserId != GetUserId())
             return NotFound();
 
         await _budgetRepository.DeleteAsync(id);

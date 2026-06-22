@@ -1,11 +1,14 @@
+using System.Security.Claims;
 using FinanceTracker.API.DTOs;
 using FinanceTracker.Core.Entities;
 using FinanceTracker.Core.Enums;
 using FinanceTracker.Core.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FinanceTracker.API.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class TransactionsController : ControllerBase
@@ -21,10 +24,12 @@ public class TransactionsController : ControllerBase
         _accountRepository = accountRepository;
     }
 
+    private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TransactionDto>>> GetAll()
     {
-        var transactions = await _transactionRepository.GetAllAsync();
+        var transactions = await _transactionRepository.GetAllByUserAsync(GetUserId());
 
         var result = transactions.Select(t => new TransactionDto(
             t.Id, t.Amount, t.Description, t.Type.ToString(), t.Date, t.Notes,
@@ -39,7 +44,7 @@ public class TransactionsController : ControllerBase
     {
         var t = await _transactionRepository.GetByIdAsync(id);
 
-        if (t is null)
+        if (t is null || t.Account?.UserId != GetUserId())
             return NotFound();
 
         return Ok(new TransactionDto(
@@ -51,6 +56,10 @@ public class TransactionsController : ControllerBase
     [HttpGet("by-account/{accountId:guid}")]
     public async Task<ActionResult<IEnumerable<TransactionDto>>> GetByAccount(Guid accountId)
     {
+        var account = await _accountRepository.GetByIdAsync(accountId);
+        if (account is null || account.UserId != GetUserId())
+            return NotFound();
+
         var transactions = await _transactionRepository.GetByAccountIdAsync(accountId);
 
         var result = transactions.Select(t => new TransactionDto(
@@ -65,7 +74,7 @@ public class TransactionsController : ControllerBase
     public async Task<ActionResult<IEnumerable<TransactionDto>>> GetByDateRange(
         [FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
     {
-        var transactions = await _transactionRepository.GetByDateRangeAsync(startDate, endDate);
+        var transactions = await _transactionRepository.GetByDateRangeAsync(GetUserId(), startDate, endDate);
 
         var result = transactions.Select(t => new TransactionDto(
             t.Id, t.Amount, t.Description, t.Type.ToString(), t.Date, t.Notes,
@@ -78,6 +87,10 @@ public class TransactionsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<TransactionDto>> Create(CreateTransactionDto dto)
     {
+        var account = await _accountRepository.GetByIdAsync(dto.AccountId);
+        if (account is null || account.UserId != GetUserId())
+            return BadRequest("Invalid account.");
+
         var transaction = new Transaction
         {
             Amount = dto.Amount,
@@ -92,19 +105,15 @@ public class TransactionsController : ControllerBase
         await _transactionRepository.AddAsync(transaction);
 
         // Update account balance
-        var account = await _accountRepository.GetByIdAsync(dto.AccountId);
-        if (account is not null)
-        {
-            account.Balance += transaction.Type == TransactionType.Income
-                ? transaction.Amount
-                : -transaction.Amount;
-            await _accountRepository.UpdateAsync(account);
-        }
+        account.Balance += transaction.Type == TransactionType.Income
+            ? transaction.Amount
+            : -transaction.Amount;
+        await _accountRepository.UpdateAsync(account);
 
         var result = new TransactionDto(
             transaction.Id, transaction.Amount, transaction.Description,
             transaction.Type.ToString(), transaction.Date, transaction.Notes,
-            transaction.AccountId, account?.Name ?? "", transaction.CategoryId, "", transaction.CreatedAt
+            transaction.AccountId, account.Name, transaction.CategoryId, "", transaction.CreatedAt
         );
 
         return CreatedAtAction(nameof(GetById), new { id = transaction.Id }, result);
@@ -116,6 +125,10 @@ public class TransactionsController : ControllerBase
         var transaction = await _transactionRepository.GetByIdAsync(id);
 
         if (transaction is null)
+            return NotFound();
+
+        var account = await _accountRepository.GetByIdAsync(transaction.AccountId);
+        if (account is null || account.UserId != GetUserId())
             return NotFound();
 
         await _transactionRepository.DeleteAsync(id);

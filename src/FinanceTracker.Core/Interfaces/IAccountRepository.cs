@@ -4,6 +4,6 @@ namespace FinanceTracker.Core.Interfaces;
 
 public interface IAccountRepository : IRepository<Account>
 {
-    Task<IReadOnlyList<Account>> GetActiveAccountsAsync();
-    Task<decimal> GetTotalBalanceAsync();
+    Task<IReadOnlyList<Account>> GetActiveAccountsByUserAsync(Guid userId);
+    Task<decimal> GetTotalBalanceByUserAsync(Guid userId);
 }

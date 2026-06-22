@@ -10,5 +10,8 @@ public class Account : BaseEntity
     public string Currency { get; set; } = "GBP";
     public bool IsActive { get; set; } = true;
 
+    public Guid UserId { get; set; }
+    public User User { get; set; } = null!;
+
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
 }

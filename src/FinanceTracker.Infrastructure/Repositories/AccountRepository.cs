@@ -11,18 +11,18 @@ public class AccountRepository : Repository<Account>, IAccountRepository
     {
     }
 
-    public async Task<IReadOnlyList<Account>> GetActiveAccountsAsync()
+    public async Task<IReadOnlyList<Account>> GetActiveAccountsByUserAsync(Guid userId)
     {
         return await _dbSet
-            .Where(a => a.IsActive)
+            .Where(a => a.UserId == userId && a.IsActive)
             .OrderBy(a => a.Name)
             .ToListAsync();
     }
 
-    public async Task<decimal> GetTotalBalanceAsync()
+    public async Task<decimal> GetTotalBalanceByUserAsync(Guid userId)
     {
         return await _dbSet
-            .Where(a => a.IsActive)
+            .Where(a => a.UserId == userId && a.IsActive)
             .SumAsync(a => a.Balance);
     }
 }

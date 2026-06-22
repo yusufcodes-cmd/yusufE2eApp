@@ -1,10 +1,13 @@
+using System.Security.Claims;
 using FinanceTracker.API.DTOs;
 using FinanceTracker.Core.Entities;
 using FinanceTracker.Core.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FinanceTracker.API.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class CategoriesController : ControllerBase
@@ -16,10 +19,12 @@ public class CategoriesController : ControllerBase
         _categoryRepository = categoryRepository;
     }
 
+    private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CategoryDto>>> GetAll()
     {
-        var categories = await _categoryRepository.GetAllAsync();
+        var categories = await _categoryRepository.GetAllByUserAsync(GetUserId());
 
         var result = categories.Select(c => new CategoryDto(
             c.Id, c.Name, c.Icon, c.Colour, c.IsDefault
@@ -33,7 +38,7 @@ public class CategoriesController : ControllerBase
     {
         var category = await _categoryRepository.GetByIdAsync(id);
 
-        if (category is null)
+        if (category is null || category.UserId != GetUserId())
             return NotFound();
 
         return Ok(new CategoryDto(
@@ -49,7 +54,8 @@ public class CategoriesController : ControllerBase
             Name = dto.Name,
             Icon = dto.Icon,
             Colour = dto.Colour,
-            IsDefault = false
+            IsDefault = false,
+            UserId = GetUserId()
         };
 
         await _categoryRepository.AddAsync(category);
@@ -66,7 +72,7 @@ public class CategoriesController : ControllerBase
     {
         var category = await _categoryRepository.GetByIdAsync(id);
 
-        if (category is null)
+        if (category is null || category.UserId != GetUserId())
             return NotFound();
 
         await _categoryRepository.DeleteAsync(id);

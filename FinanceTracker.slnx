@@ -1,7 +1,3 @@
 <Solution>
-  <Folder Name="/src/">
-    <Project Path="src/FinanceTracker.API/FinanceTracker.API.csproj" />
-    <Project Path="src/FinanceTracker.Core/FinanceTracker.Core.csproj" />
-    <Project Path="src/FinanceTracker.Infrastructure/FinanceTracker.Infrastructure.csproj" />
-  </Folder>
+  <Folder Name="/src/" />
 </Solution>
