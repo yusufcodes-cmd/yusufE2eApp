@@ -12,6 +12,16 @@ public class TransactionRepository : Repository<Transaction>, ITransactionReposi
     {
     }
 
+    public async Task<IReadOnlyList<Transaction>> GetAllByUserAsync(Guid userId)
+    {
+        return await _dbSet
+            .Where(t => t.Account.UserId == userId)
+            .Include(t => t.Category)
+            .Include(t => t.Account)
+            .OrderByDescending(t => t.Date)
+            .ToListAsync();
+    }
+
     public async Task<IReadOnlyList<Transaction>> GetByAccountIdAsync(Guid accountId)
     {
         return await _dbSet
@@ -21,10 +31,10 @@ public class TransactionRepository : Repository<Transaction>, ITransactionReposi
             .ToListAsync();
     }
 
-    public async Task<IReadOnlyList<Transaction>> GetByDateRangeAsync(DateTime startDate, DateTime endDate)
+    public async Task<IReadOnlyList<Transaction>> GetByDateRangeAsync(Guid userId, DateTime startDate, DateTime endDate)
     {
         return await _dbSet
-            .Where(t => t.Date >= startDate && t.Date <= endDate)
+            .Where(t => t.Account.UserId == userId && t.Date >= startDate && t.Date <= endDate)
             .Include(t => t.Category)
             .Include(t => t.Account)
             .OrderByDescending(t => t.Date)
@@ -40,10 +50,10 @@ public class TransactionRepository : Repository<Transaction>, ITransactionReposi
             .ToListAsync();
     }
 
-    public async Task<decimal> GetTotalByTypeAsync(TransactionType type, int month, int year)
+    public async Task<decimal> GetTotalByTypeAsync(Guid userId, TransactionType type, int month, int year)
     {
         return await _dbSet
-            .Where(t => t.Type == type && t.Date.Month == month && t.Date.Year == year)
+            .Where(t => t.Account.UserId == userId && t.Type == type && t.Date.Month == month && t.Date.Year == year)
             .SumAsync(t => t.Amount);
     }
 }

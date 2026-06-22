@@ -11,17 +11,17 @@ public class BudgetRepository : Repository<Budget>, IBudgetRepository
     {
     }
 
-    public async Task<IReadOnlyList<Budget>> GetByMonthAsync(int month, int year)
+    public async Task<IReadOnlyList<Budget>> GetByMonthAsync(Guid userId, int month, int year)
     {
         return await _dbSet
-            .Where(b => b.Month == month && b.Year == year)
+            .Where(b => b.UserId == userId && b.Month == month && b.Year == year)
             .Include(b => b.Category)
             .ToListAsync();
     }
 
-    public async Task<Budget?> GetByCategoryAndMonthAsync(Guid categoryId, int month, int year)
+    public async Task<Budget?> GetByCategoryAndMonthAsync(Guid userId, Guid categoryId, int month, int year)
     {
         return await _dbSet
-            .FirstOrDefaultAsync(b => b.CategoryId == categoryId && b.Month == month && b.Year == year);
+            .FirstOrDefaultAsync(b => b.UserId == userId && b.CategoryId == categoryId && b.Month == month && b.Year == year);
     }
 }

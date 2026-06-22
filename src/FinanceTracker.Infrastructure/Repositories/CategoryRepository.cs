@@ -11,10 +11,10 @@ public class CategoryRepository : Repository<Category>, ICategoryRepository
     {
     }
 
-    public async Task<IReadOnlyList<Category>> GetDefaultCategoriesAsync()
+    public async Task<IReadOnlyList<Category>> GetAllByUserAsync(Guid userId)
     {
         return await _dbSet
-            .Where(c => c.IsDefault)
+            .Where(c => c.UserId == userId)
             .OrderBy(c => c.Name)
             .ToListAsync();
     }

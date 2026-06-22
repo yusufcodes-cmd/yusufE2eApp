@@ -4,5 +4,5 @@ namespace FinanceTracker.Core.Interfaces;
 
 public interface ICategoryRepository : IRepository<Category>
 {
-    Task<IReadOnlyList<Category>> GetDefaultCategoriesAsync();
+    Task<IReadOnlyList<Category>> GetAllByUserAsync(Guid userId);
 }

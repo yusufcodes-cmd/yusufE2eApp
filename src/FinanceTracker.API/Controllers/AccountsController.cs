@@ -1,11 +1,14 @@
+using System.Security.Claims;
 using FinanceTracker.API.DTOs;
 using FinanceTracker.Core.Entities;
 using FinanceTracker.Core.Enums;
 using FinanceTracker.Core.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FinanceTracker.API.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class AccountsController : ControllerBase
@@ -17,10 +20,12 @@ public class AccountsController : ControllerBase
         _accountRepository = accountRepository;
     }
 
+    private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<AccountDto>>> GetAll()
     {
-        var accounts = await _accountRepository.GetActiveAccountsAsync();
+        var accounts = await _accountRepository.GetActiveAccountsByUserAsync(GetUserId());
 
         var result = accounts.Select(a => new AccountDto(
             a.Id, a.Name, a.Type.ToString(), a.Balance, a.Currency, a.IsActive, a.CreatedAt
@@ -34,7 +39,7 @@ public class AccountsController : ControllerBase
     {
         var account = await _accountRepository.GetByIdAsync(id);
 
-        if (account is null)
+        if (account is null || account.UserId != GetUserId())
             return NotFound();
 
         return Ok(new AccountDto(
@@ -51,7 +56,8 @@ public class AccountsController : ControllerBase
             Name = dto.Name,
             Type = Enum.Parse<AccountType>(dto.Type),
             Balance = dto.Balance,
-            Currency = dto.Currency
+            Currency = dto.Currency,
+            UserId = GetUserId()
         };
 
         await _accountRepository.AddAsync(account);
@@ -69,7 +75,7 @@ public class AccountsController : ControllerBase
     {
         var account = await _accountRepository.GetByIdAsync(id);
 
-        if (account is null)
+        if (account is null || account.UserId != GetUserId())
             return NotFound();
 
         account.Name = dto.Name;
@@ -88,7 +94,7 @@ public class AccountsController : ControllerBase
     {
         var account = await _accountRepository.GetByIdAsync(id);
 
-        if (account is null)
+        if (account is null || account.UserId != GetUserId())
             return NotFound();
 
         await _accountRepository.DeleteAsync(id);
@@ -99,7 +105,7 @@ public class AccountsController : ControllerBase
     [HttpGet("total-balance")]
     public async Task<ActionResult<decimal>> GetTotalBalance()
     {
-        var total = await _accountRepository.GetTotalBalanceAsync();
+        var total = await _accountRepository.GetTotalBalanceByUserAsync(GetUserId());
         return Ok(total);
     }
 }
